@@ -4,7 +4,7 @@ if (Test-Path 'vid_data'){
 mkdir vid_data
 mkdir vid_data/original
 mkdir vid_data/fake
-$vidno = 30
+$vidno = 3000
 Write-Output "Downloading Original videos"
 Write-Output '' | python ./faceforensics_download_v4.py ./vid_data -d  original -c c23 --num_videos $vidno -t videos
 Move-Item ./vid_data/original_sequences/youtube/c23/videos/*  ./vid_data/original/

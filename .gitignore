@@ -1,4 +1,5 @@
 __pycache__
 .mypy_cache
-deepfake
+deepfake-venv
+.vscode
 vid_data
