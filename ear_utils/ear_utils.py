@@ -2,8 +2,6 @@ import cv2
 from typing import List, Union, NamedTuple, Tuple
 import mediapipe as mp
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
@@ -102,12 +100,3 @@ def get_frame_EAR(frame: np.ndarray) -> Tuple[np.ndarray, float]:
             # EAR = arverage of lf_EAR and rt_EAR
             EAR = (lf_EAR+rt_EAR)/2
     return frame, EAR
-
-
-def plot_ear(ear: EAR) -> Tuple[plt.Figure, plt.Axes]:
-    fig, ax = plt.subplots()
-    ax.plot(ear)
-    ax.set.title("EAR plot")
-    ax.set_xlabel("Frame")
-    ax.set_ylabel("EAR")
-    return fig, ax
