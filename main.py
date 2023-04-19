@@ -5,46 +5,32 @@ import numpy as np
 import matplotlib.pyplot as plt
 from typing import List, Union, Tuple
 from PIL import Image, ImageTk
-from ear_utils import get_frame_EAR
+from ear_utils import get_frame_EAR, VidProcess
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-
-
-class VidProcess:
-    def __init__(self, vid_path: str):
-        self.vid_path = vid_path
-        self.cap = cv2.VideoCapture(vid_path)
-        self.width = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
-        self.height = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
-
-    def get_frame(self) -> Tuple[bool, Union[np.ndarray, None]]:
-        success, image = False, None
-        if self.cap.isOpened():
-            success, image = self.cap.read()
-
-            # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        return success, image
-
-    def __del__(self):
-        if self.cap.isOpened():
-            self.cap.release()
 
 
 class DfApp:
     def __init__(self, window, title):
         self.window = window
-        self.vid_proc = VidProcess("./vid_data/fake/2.mp4")
+        self.vid_proc = VidProcess("./vid_data/fake/0.mp4")
         self.window.title(title)
         self.image = ImageTk.PhotoImage(file="dfdetect.jpg")
         self.ear_counter: List[float] = []
+        self.EAR_threshold = 0.2
+        self.blink_count = 0
         self.img_canvas = tkinter.Canvas(
             self.window, width=self.vid_proc.width, height=self.vid_proc.height)
-        self.img_canvas.pack()
+        self.img_canvas.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
 
         self.fig, self.ax = plt.subplots()
         self.plot_canvas = FigureCanvasTkAgg(self.fig, master=self.window)
         self.plot_canvas.draw()
-        self.plot_canvas.get_tk_widget().pack()
+        self.plot_canvas.get_tk_widget().pack(
+            side=tkinter.LEFT, fill=tkinter.BOTH, expand=True)
+
+        self.text_box = tkinter.Text(self.window, width=20)
+        self.text_box.pack(side=tkinter.RIGHT)
 
         self.update()
         self.window.mainloop()
@@ -54,6 +40,8 @@ class DfApp:
         if not success:
             return
         frame, counter = get_frame_EAR(frame)
+        if counter < self.EAR_threshold:
+            self.blink_count += 1
         self.ear_counter.append(counter)
 
         self.image = ImageTk.PhotoImage(image=Image.fromarray(frame))
@@ -64,6 +52,10 @@ class DfApp:
         self.ax.set_xlabel("Frame")
         self.ax.set_ylabel("EAR")
         self.plot_canvas.draw()
+
+        self.text_box.delete("1.0", tkinter.END)
+        self.text_box.insert(
+            "1.0", chars=f"EAR : {counter}\nCounter : {self.blink_count}/{len(self.ear_counter)}")
 
         self.window.after(1, self.update)
 
