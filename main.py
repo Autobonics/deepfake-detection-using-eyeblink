@@ -1,10 +1,12 @@
 import cv2
 import tkinter
+import pandas as pd
 import mediapipe as mp
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import List, Union, Tuple
+from typing import List, Union, Tuple, Optional
 from PIL import Image, ImageTk
+from xgboost import XGBClassifier
 from ear_utils import get_frame_EAR, VidProcess
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -13,12 +15,20 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 class DfApp:
     def __init__(self, window, title):
         self.window = window
-        self.vid_proc = VidProcess("./vid_data/fake/0.mp4")
+        self.vid_proc = VidProcess("./vid_data/original/200.mp4")
+        self.vid_flag = True
         self.window.title(title)
         self.image = ImageTk.PhotoImage(file="dfdetect.jpg")
         self.ear_counter = []
         self.EAR_threshold = 0.2
         self.blink_count = 0
+        self.model = None
+        self.res_str = "Press Submit after data insertion and vid process"
+        try:
+            self.model = XGBClassifier()
+            self.model.load_model('dfake_model.xgb')
+        except Exception as err:
+            print("Error getting model :", err)
         self.img_canvas = tkinter.Canvas(
             self.window, width=self.vid_proc.width, height=self.vid_proc.height)
         self.img_canvas.pack(side=tkinter.TOP, fill=tkinter.BOTH, expand=True)
@@ -49,6 +59,10 @@ class DfApp:
         self.tod_drop = tkinter.OptionMenu(
             self.window, self.tod_opt, *self.t_opts)
         self.tod_drop.pack()
+        # Submit button
+        self.submit_btn = tkinter.Button(
+            self.window, text="Submit", command=self.submit_opt)
+        self.submit_btn.pack()
         # Plot
         self.fig, self.ax = plt.subplots()
         self.plot_canvas = FigureCanvasTkAgg(self.fig, master=self.window)
@@ -59,15 +73,19 @@ class DfApp:
         self.text_box = tkinter.Text(self.window, width=20)
         self.text_box.pack(side=tkinter.RIGHT)
 
-        self.submit_btn = tkinter.Button(
-            self.window, text="Submit", command=self.submit_opt)
-        self.submit_btn.pack()
+        self.res_box = tkinter.Text(self.window)
+        self.res_box.pack(side=tkinter.RIGHT)
+
+        self.res_box.delete("1.0", tkinter.END)
+        self.res_box.insert("1.0", chars=self.res_str)
+
         self.update()
         self.window.mainloop()
 
     def update(self):
         success, frame = self.vid_proc.get_frame()
         if not success:
+            self.vid_flag = False
             return
         frame, counter = get_frame_EAR(frame)
         if counter < self.EAR_threshold:
@@ -120,7 +138,34 @@ class DfApp:
         gender = self.get_gender_opt(self.gender_opt.get())
         age = self.get_age_opt(self.age_opt.get())
         tod = self.get_tod_opt(self.tod_opt.get())
-        print(f"Gender : {gender}\nAge : {age}\nTod : {tod}")
+        res = self.get_model_res(gender, age, tod)
+        if res == 0:
+            self.res_str = "Video is original"
+        elif res == 1:
+            self.res_str = "Video if fake"
+        self.res_box.delete("1.0", tkinter.END)
+        self.res_box.insert("1.0", chars=self.res_str)
+
+    def get_model_res(self, gender: int, age: int, tod: int) -> Optional[int]:
+        if self.model:
+            if self.vid_flag == True:
+                self.res_str = "Vid Processing not over"
+                self.res_box.delete("1.0", tkinter.END)
+                self.res_box.insert("1.0", chars=self.res_str)
+                return None
+            bpf = self.blink_count/len(self.vid_proc)
+            print(f"Gender : {gender}\nAge : {age}\nTod : {tod}\nBpf: {bpf}")
+            df = pd.DataFrame(data=[[age, gender, tod, bpf]],
+                              columns=["age_grp", "gender", "time_of_day", "bpf"])
+            try:
+                res = self.model.predict(df)[0]
+                return res
+            except Exception as err:
+                print("Error in model prediction : ", err)
+                return None
+        else:
+            print("model not initialized")
+            return None
 
 
 def main():
