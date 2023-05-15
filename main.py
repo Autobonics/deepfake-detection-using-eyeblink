@@ -105,38 +105,40 @@ class DfApp:
         self.blink_count = 0
 
     def update(self):
-        if self.vid_proc:
-            success, frame = self.vid_proc.get_frame()
-            if not success:
-                self.vid_flag = False
-                self.vid_state.set("Video Processing Completed")
-                return
-            frame, counter = get_frame_EAR(frame)
-            if counter < self.EAR_threshold:
-                self.blink_count += 1
-            self.ear_counter.append(counter)
+        if self.window.winfo_exists():
+            if self.vid_proc:
+                success, frame = self.vid_proc.get_frame()
+                if not success:
+                    self.vid_flag = False
+                    self.vid_state.set("Video Processing Completed")
+                    return
+                frame, counter = get_frame_EAR(frame)
+                if counter < self.EAR_threshold:
+                    self.blink_count += 1
+                self.ear_counter.append(counter)
+                self.image = ImageTk.PhotoImage(image=Image.fromarray(frame))
+                self.img_canvas.create_image(
+                    0, 0, image=self.image, anchor=tkinter.NW)
 
-            self.image = ImageTk.PhotoImage(image=Image.fromarray(frame))
-            self.img_canvas.create_image(
-                0, 0, image=self.image, anchor=tkinter.NW)
+                self.ax.clear()
+                self.ax.plot(self.ear_counter)
+                self.ax.set_xlabel("Frame")
+                self.ax.set_ylabel("EAR")
+                self.plot_canvas.draw()
 
-            self.ax.clear()
-            self.ax.plot(self.ear_counter)
-            self.ax.set_xlabel("Frame")
-            self.ax.set_ylabel("EAR")
-            self.plot_canvas.draw()
-
-            self.text_box.delete("1.0", tkinter.END)
-            self.text_box.insert(
-                "1.0", chars=f"EAR : {counter}\nCounter : {self.blink_count}/{len(self.ear_counter)}")
-        self.window.after(1, self.update)
+                self.text_box.delete("1.0", tkinter.END)
+                self.text_box.insert(
+                    "1.0", chars=f"EAR : {counter}\nCounter : {self.blink_count}/{len(self.ear_counter)}")
+            self.window.after(1, self.update)
 
     def select_vid(self):
+        if self.vid_proc:
+            self.vid_proc.__del__()
         self.vid_path = tkinter.filedialog.askopenfilename(
             initialdir="./", title="Select a video", filetypes=(("Mp4", "*.mp4"), ("all Files", "*.*")))
         self.vid_proc = VidProcess(self.vid_path)
         self.set_default()
-        self.update()
+        return
 
     def get_gender_opt(self, g_txt: str) -> int:
         return 0 if g_txt == "Male" else 1

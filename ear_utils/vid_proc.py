@@ -32,3 +32,4 @@ class VidProcess:
 
     def __len__(self) -> int:
         return int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    
